@@ -22,19 +22,16 @@ Notes are stored locally on the device, so they remain available even after clos
 
 | Home | Create Note |
 |------|-------------|
-| <img src="screenshots/home.jpeg" width="250"> | <img src="screenshots/new%20note.jpeg" width="250"> |
-
-| Search | Pinned Notes |
-|--------|--------------|
-| <img src="screenshots/search.jpeg" width="250"> | <img src="screenshots/pin.jpeg" width="250"> |
-
-| Home | Create Note |
-|------|-------------|
 | <img src="screenshots/home.jpeg" width="250"> | <img src="screenshots/new-note.jpeg" width="250"> |
 
 | Search | Pinned Notes |
 |--------|--------------|
 | <img src="screenshots/search.jpeg" width="250"> | <img src="screenshots/pin.jpeg" width="250"> |
+
+| Delete | Edit Note |
+|------|-------------|
+| <img src="screenshots/delete.jpeg" width="250"> | <img src="screenshots/edit-note.jpeg" width="250"> |
+
 
 ## Technologies Used
 
