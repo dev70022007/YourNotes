@@ -45,6 +45,23 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Note> notes = [];
 
+  TextEditingController searchController = TextEditingController();
+
+  List<Note> get filteredNotes {
+    if (searchController.text.isEmpty) {
+      return notes;
+    }
+
+    return notes.where((note) {
+      return note.title.toLowerCase().contains(
+            searchController.text.toLowerCase(),
+          ) ||
+          note.content.toLowerCase().contains(
+            searchController.text.toLowerCase(),
+          );
+    }).toList();
+  }
+
   Future<void> saveNotes() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -85,72 +102,116 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
+  void dispose() {
+    searchController.dispose();
+
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('YourNotes')),
 
-      body: notes.isEmpty
-          ? const Center(
-              child: Text('No notes yet', style: TextStyle(fontSize: 20)),
-            )
-          : ListView.builder(
-              itemCount: notes.length,
+      body: Column(
+        children: [
+          // Search box
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: TextField(
+              controller: searchController,
 
-              itemBuilder: (context, index) {
-                return Card(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+              onChanged: (value) {
+                setState(() {});
+              },
 
-                  child: ListTile(
-                    // Note title
-                    title: Text(notes[index].title),
+              decoration: const InputDecoration(
+                hintText: 'Search notes...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
 
-                    // Note content
-                    subtitle: Text(
-                      notes[index].content,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+          // Notes list
+          Expanded(
+            child: notes.isEmpty
+                ? const Center(
+                    child: Text('No notes yet', style: TextStyle(fontSize: 20)),
+                  )
+                : filteredNotes.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No matching notes',
+                      style: TextStyle(fontSize: 20),
                     ),
+                  )
+                : ListView.builder(
+                    itemCount: filteredNotes.length,
 
-                    // Edit note
-                    onTap: () async {
-                      final editedNote = await Navigator.push(
-                        context,
+                    itemBuilder: (context, index) {
+                      final note = filteredNotes[index];
 
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              NoteScreen(existingNote: notes[index]),
+                      final originalIndex = notes.indexOf(note);
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+
+                        child: ListTile(
+                          // Note title
+                          title: Text(note.title),
+
+                          // Note content
+                          subtitle: Text(
+                            note.content,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+
+                          // Edit note
+                          onTap: () async {
+                            final editedNote = await Navigator.push(
+                              context,
+
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    NoteScreen(existingNote: note),
+                              ),
+                            );
+
+                            if (editedNote != null) {
+                              setState(() {
+                                notes[originalIndex] = editedNote;
+                              });
+
+                              await saveNotes();
+                            }
+                          },
+
+                          // Delete note
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete),
+
+                            onPressed: () async {
+                              setState(() {
+                                notes.removeAt(originalIndex);
+                              });
+
+                              await saveNotes();
+                            },
+                          ),
                         ),
                       );
-
-                      if (editedNote != null) {
-                        setState(() {
-                          notes[index] = editedNote;
-                        });
-
-                        await saveNotes();
-                      }
                     },
-
-                    // Delete note
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete),
-
-                      onPressed: () async {
-                        setState(() {
-                          notes.removeAt(index);
-                        });
-
-                        await saveNotes();
-                      },
-                    ),
                   ),
-                );
-              },
-            ),
+          ),
+        ],
+      ),
 
+      // Add new note
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final savedNote = await Navigator.push(
@@ -247,6 +308,7 @@ class _NoteScreenState extends State<NoteScreen> {
             ),
 
             const SizedBox(height: 16),
+
             Expanded(
               child: TextField(
                 controller: contentController,
