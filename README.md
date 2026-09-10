@@ -57,7 +57,7 @@ Clone the repository:
 
 Move into the project folder:
 
-    cd notes_app
+    cd YourNotes/
 
 Install the dependencies:
 
