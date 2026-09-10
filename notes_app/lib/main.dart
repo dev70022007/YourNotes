@@ -24,10 +24,22 @@ class Note {
   String title;
   String content;
   bool isPinned;
-  Note({required this.title, required this.content, this.isPinned = false});
+  DateTime lastEdited;
+
+  Note({
+    required this.title,
+    required this.content,
+    this.isPinned = false,
+    DateTime? lastEdited,
+  }) : lastEdited = lastEdited ?? DateTime.now();
 
   Map<String, dynamic> toMap() {
-    return {'title': title, 'content': content, 'isPinned': isPinned};
+    return {
+      'title': title,
+      'content': content,
+      'isPinned': isPinned,
+      'lastEdited': lastEdited.toIso8601String(),
+    };
   }
 
   factory Note.fromMap(Map<String, dynamic> map) {
@@ -35,6 +47,9 @@ class Note {
       title: map['title'],
       content: map['content'],
       isPinned: map['isPinned'] ?? false,
+      lastEdited: map['lastEdited'] != null
+          ? DateTime.parse(map['lastEdited'])
+          : DateTime.now(),
     );
   }
 }
@@ -130,7 +145,13 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('YourNotes')),
+      appBar: AppBar(
+        title: const Text(
+          'YourNotes',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: false,
+      ),
       body: Column(
         children: [
           Padding(
@@ -140,10 +161,14 @@ class _HomeScreenState extends State<HomeScreen> {
               onChanged: (value) {
                 setState(() {});
               },
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Search notes...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
           ),
@@ -171,6 +196,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           vertical: 6,
                         ),
                         elevation: 3,
+                        color: note.isPinned ? Colors.amber.shade50 : null,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         child: ListTile(
                           contentPadding: const EdgeInsets.all(16),
                           title: Text(
@@ -182,13 +211,23 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                              note.content.isEmpty
-                                  ? 'No content'
-                                  : note.content,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  note.content.isEmpty
+                                      ? 'No content'
+                                      : note.content,
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Last edited: ${note.lastEdited.day}/${note.lastEdited.month}/${note.lastEdited.year}',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ],
                             ),
                           ),
                           onTap: () async {
@@ -287,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
             await saveNotes();
           }
         },
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, size: 28),
       ),
     );
   }
@@ -341,6 +380,8 @@ class _NoteScreenState extends State<NoteScreen> {
               final note = Note(
                 title: titleController.text,
                 content: contentController.text,
+                isPinned: widget.existingNote?.isPinned ?? false,
+                lastEdited: DateTime.now(),
               );
 
               Navigator.pop(context, note);
@@ -355,18 +396,26 @@ class _NoteScreenState extends State<NoteScreen> {
           children: [
             TextField(
               controller: titleController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Title',
-                border: OutlineInputBorder(),
+                filled: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
             const SizedBox(height: 16),
             Expanded(
               child: TextField(
                 controller: contentController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Write your note here...',
-                  border: OutlineInputBorder(),
+                  filled: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
                 maxLines: null,
                 expands: true,
