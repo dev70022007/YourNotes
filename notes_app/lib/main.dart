@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const YourNotes());
@@ -27,6 +28,34 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<String> notes = [];
 
+  // Save notes
+  Future<void> saveNotes() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setStringList('notes', notes);
+  }
+
+  // Load notes
+  Future<void> loadNotes() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final savedNotes = prefs.getStringList('notes');
+
+    if (savedNotes != null) {
+      setState(() {
+        notes = savedNotes;
+      });
+    }
+  }
+
+  // Runs when HomeScreen starts
+  @override
+  void initState() {
+    super.initState();
+
+    loadNotes();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -39,10 +68,50 @@ class _HomeScreenState extends State<HomeScreen> {
           : ListView.builder(
               itemCount: notes.length,
               itemBuilder: (context, index) {
-                return ListTile(title: Text(notes[index]));
+                return Card(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  child: ListTile(
+                    title: Text(notes[index]),
+
+                    // Edit note
+                    onTap: () async {
+                      final editedNote = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              NoteScreen(existingNote: notes[index]),
+                        ),
+                      );
+
+                      if (editedNote != null) {
+                        setState(() {
+                          notes[index] = editedNote;
+                        });
+
+                        await saveNotes();
+                      }
+                    },
+
+                    // Delete note
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () async {
+                        setState(() {
+                          notes.removeAt(index);
+                        });
+
+                        await saveNotes();
+                      },
+                    ),
+                  ),
+                );
               },
             ),
 
+      // Add new note
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final savedNote = await Navigator.push(
@@ -54,6 +123,8 @@ class _HomeScreenState extends State<HomeScreen> {
             setState(() {
               notes.add(savedNote);
             });
+
+            await saveNotes();
           }
         },
         child: const Icon(Icons.add),
@@ -63,7 +134,9 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class NoteScreen extends StatefulWidget {
-  const NoteScreen({super.key});
+  final String? existingNote;
+
+  const NoteScreen({super.key, this.existingNote});
 
   @override
   State<NoteScreen> createState() => _NoteScreenState();
@@ -73,8 +146,16 @@ class _NoteScreenState extends State<NoteScreen> {
   final TextEditingController noteController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+
+    noteController.text = widget.existingNote ?? '';
+  }
+
+  @override
   void dispose() {
     noteController.dispose();
+
     super.dispose();
   }
 
@@ -92,8 +173,10 @@ class _NoteScreenState extends State<NoteScreen> {
           ),
         ],
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(16),
+
         child: TextField(
           controller: noteController,
           decoration: const InputDecoration(
