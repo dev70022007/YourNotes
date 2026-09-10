@@ -18,6 +18,24 @@ Notes are stored locally on the device, so they remain available even after clos
 - Delete confirmation dialog
 - Clean and simple user interface
 
+## Screenshots
+
+| Home | Create Note |
+|------|-------------|
+| <img src="screenshots/home.jpeg" width="250"> | <img src="screenshots/new%20note.jpeg" width="250"> |
+
+| Search | Pinned Notes |
+|--------|--------------|
+| <img src="screenshots/search.jpeg" width="250"> | <img src="screenshots/pin.jpeg" width="250"> |
+
+| Home | Create Note |
+|------|-------------|
+| <img src="screenshots/home.jpeg" width="250"> | <img src="screenshots/new-note.jpeg" width="250"> |
+
+| Search | Pinned Notes |
+|--------|--------------|
+| <img src="screenshots/search.jpeg" width="250"> | <img src="screenshots/pin.jpeg" width="250"> |
+
 ## Technologies Used
 
 - Flutter
@@ -38,7 +56,7 @@ You can check your Flutter installation by running:
 
 Clone the repository:
 
-    git clone <your-github-repository-url>
+    git clone https://github.com/dev70022007/YourNotes.git
 
 Move into the project folder:
 
@@ -78,4 +96,3 @@ The notes are converted to JSON data before being saved and loaded again when th
 - Undo delete
 - Cloud synchronization
 - App lock
-
