@@ -23,15 +23,19 @@ class YourNotes extends StatelessWidget {
 class Note {
   String title;
   String content;
-
-  Note({required this.title, required this.content});
+  bool isPinned;
+  Note({required this.title, required this.content, this.isPinned = false});
 
   Map<String, dynamic> toMap() {
-    return {'title': title, 'content': content};
+    return {'title': title, 'content': content, 'isPinned': isPinned};
   }
 
   factory Note.fromMap(Map<String, dynamic> map) {
-    return Note(title: map['title'], content: map['content']);
+    return Note(
+      title: map['title'],
+      content: map['content'],
+      isPinned: map['isPinned'] ?? false,
+    );
   }
 }
 
@@ -48,18 +52,34 @@ class _HomeScreenState extends State<HomeScreen> {
   TextEditingController searchController = TextEditingController();
 
   List<Note> get filteredNotes {
+    List<Note> result;
+
     if (searchController.text.isEmpty) {
-      return notes;
+      result = List.from(notes);
+    } else {
+      result = notes.where((note) {
+        return note.title.toLowerCase().contains(
+              searchController.text.toLowerCase(),
+            ) ||
+            note.content.toLowerCase().contains(
+              searchController.text.toLowerCase(),
+            );
+      }).toList();
     }
 
-    return notes.where((note) {
-      return note.title.toLowerCase().contains(
-            searchController.text.toLowerCase(),
-          ) ||
-          note.content.toLowerCase().contains(
-            searchController.text.toLowerCase(),
-          );
-    }).toList();
+    result.sort((a, b) {
+      if (a.isPinned && !b.isPinned) {
+        return -1;
+      }
+
+      if (!a.isPinned && b.isPinned) {
+        return 1;
+      }
+
+      return 0;
+    });
+
+    return result;
   }
 
   Future<void> saveNotes() async {
@@ -84,7 +104,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
       for (String noteString in savedNotes) {
         Map<String, dynamic> noteMap = jsonDecode(noteString);
-
         loadedNotes.add(Note.fromMap(noteMap));
       }
 
@@ -112,19 +131,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('YourNotes')),
-
       body: Column(
         children: [
-          // Search box
           Padding(
             padding: const EdgeInsets.all(12),
             child: TextField(
               controller: searchController,
-
               onChanged: (value) {
                 setState(() {});
               },
-
               decoration: const InputDecoration(
                 hintText: 'Search notes...',
                 prefixIcon: Icon(Icons.search),
@@ -132,8 +147,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-
-          // Notes list
           Expanded(
             child: notes.isEmpty
                 ? const Center(
@@ -148,10 +161,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   )
                 : ListView.builder(
                     itemCount: filteredNotes.length,
-
                     itemBuilder: (context, index) {
                       final note = filteredNotes[index];
-
                       final originalIndex = notes.indexOf(note);
 
                       return Card(
@@ -159,23 +170,30 @@ class _HomeScreenState extends State<HomeScreen> {
                           horizontal: 12,
                           vertical: 6,
                         ),
-
+                        elevation: 3,
                         child: ListTile(
-                          // Note title
-                          title: Text(note.title),
-
-                          // Note content
-                          subtitle: Text(
-                            note.content,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                          contentPadding: const EdgeInsets.all(16),
+                          title: Text(
+                            note.title.isEmpty ? 'Untitled Note' : note.title,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-
-                          // Edit note
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              note.content.isEmpty
+                                  ? 'No content'
+                                  : note.content,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ),
                           onTap: () async {
                             final editedNote = await Navigator.push(
                               context,
-
                               MaterialPageRoute(
                                 builder: (context) =>
                                     NoteScreen(existingNote: note),
@@ -190,18 +208,62 @@ class _HomeScreenState extends State<HomeScreen> {
                               await saveNotes();
                             }
                           },
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: Icon(
+                                  note.isPinned
+                                      ? Icons.push_pin
+                                      : Icons.push_pin_outlined,
+                                ),
+                                onPressed: () async {
+                                  setState(() {
+                                    note.isPinned = !note.isPinned;
+                                  });
 
-                          // Delete note
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete),
+                                  await saveNotes();
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete),
+                                onPressed: () async {
+                                  final shouldDelete = await showDialog<bool>(
+                                    context: context,
+                                    builder: (context) {
+                                      return AlertDialog(
+                                        title: const Text('Delete note?'),
+                                        content: const Text(
+                                          'This action cannot be undone.',
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.pop(context, false);
+                                            },
+                                            child: const Text('Cancel'),
+                                          ),
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.pop(context, true);
+                                            },
+                                            child: const Text('Delete'),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
 
-                            onPressed: () async {
-                              setState(() {
-                                notes.removeAt(originalIndex);
-                              });
+                                  if (shouldDelete == true) {
+                                    setState(() {
+                                      notes.removeAt(originalIndex);
+                                    });
 
-                              await saveNotes();
-                            },
+                                    await saveNotes();
+                                  }
+                                },
+                              ),
+                            ],
                           ),
                         ),
                       );
@@ -210,13 +272,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-
-      // Add new note
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final savedNote = await Navigator.push(
             context,
-
             MaterialPageRoute(builder: (context) => const NoteScreen()),
           );
 
@@ -228,7 +287,6 @@ class _HomeScreenState extends State<HomeScreen> {
             await saveNotes();
           }
         },
-
         child: const Icon(Icons.add),
       ),
     );
@@ -255,7 +313,6 @@ class _NoteScreenState extends State<NoteScreen> {
 
     if (widget.existingNote != null) {
       titleController.text = widget.existingNote!.title;
-
       contentController.text = widget.existingNote!.content;
     }
   }
@@ -263,7 +320,6 @@ class _NoteScreenState extends State<NoteScreen> {
   @override
   void dispose() {
     titleController.dispose();
-
     contentController.dispose();
 
     super.dispose();
@@ -274,55 +330,46 @@ class _NoteScreenState extends State<NoteScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Note'),
-
         actions: [
           IconButton(
             onPressed: () {
+              if (titleController.text.trim().isEmpty &&
+                  contentController.text.trim().isEmpty) {
+                return;
+              }
+
               final note = Note(
                 title: titleController.text,
-
                 content: contentController.text,
               );
 
               Navigator.pop(context, note);
             },
-
             icon: const Icon(Icons.save),
           ),
         ],
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(16),
-
         child: Column(
           children: [
             TextField(
               controller: titleController,
-
               decoration: const InputDecoration(
                 hintText: 'Title',
-
                 border: OutlineInputBorder(),
               ),
             ),
-
             const SizedBox(height: 16),
-
             Expanded(
               child: TextField(
                 controller: contentController,
-
                 decoration: const InputDecoration(
                   hintText: 'Write your note here...',
-
                   border: OutlineInputBorder(),
                 ),
-
                 maxLines: null,
-
                 expands: true,
-
                 textAlignVertical: TextAlignVertical.top,
               ),
             ),
