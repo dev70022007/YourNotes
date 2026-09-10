@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -18,6 +20,21 @@ class YourNotes extends StatelessWidget {
   }
 }
 
+class Note {
+  String title;
+  String content;
+
+  Note({required this.title, required this.content});
+
+  Map<String, dynamic> toMap() {
+    return {'title': title, 'content': content};
+  }
+
+  factory Note.fromMap(Map<String, dynamic> map) {
+    return Note(title: map['title'], content: map['content']);
+  }
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -26,29 +43,40 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<String> notes = [];
+  List<Note> notes = [];
 
-  // Save notes
   Future<void> saveNotes() async {
     final prefs = await SharedPreferences.getInstance();
 
-    await prefs.setStringList('notes', notes);
+    List<String> savedNotes = [];
+
+    for (Note note in notes) {
+      savedNotes.add(jsonEncode(note.toMap()));
+    }
+
+    await prefs.setStringList('notes', savedNotes);
   }
 
-  // Load notes
   Future<void> loadNotes() async {
     final prefs = await SharedPreferences.getInstance();
 
     final savedNotes = prefs.getStringList('notes');
 
     if (savedNotes != null) {
+      List<Note> loadedNotes = [];
+
+      for (String noteString in savedNotes) {
+        Map<String, dynamic> noteMap = jsonDecode(noteString);
+
+        loadedNotes.add(Note.fromMap(noteMap));
+      }
+
       setState(() {
-        notes = savedNotes;
+        notes = loadedNotes;
       });
     }
   }
 
-  // Runs when HomeScreen starts
   @override
   void initState() {
     super.initState();
@@ -67,19 +95,30 @@ class _HomeScreenState extends State<HomeScreen> {
             )
           : ListView.builder(
               itemCount: notes.length,
+
               itemBuilder: (context, index) {
                 return Card(
                   margin: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 6,
                   ),
+
                   child: ListTile(
-                    title: Text(notes[index]),
+                    // Note title
+                    title: Text(notes[index].title),
+
+                    // Note content
+                    subtitle: Text(
+                      notes[index].content,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
 
                     // Edit note
                     onTap: () async {
                       final editedNote = await Navigator.push(
                         context,
+
                         MaterialPageRoute(
                           builder: (context) =>
                               NoteScreen(existingNote: notes[index]),
@@ -98,6 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     // Delete note
                     trailing: IconButton(
                       icon: const Icon(Icons.delete),
+
                       onPressed: () async {
                         setState(() {
                           notes.removeAt(index);
@@ -111,11 +151,11 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
 
-      // Add new note
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final savedNote = await Navigator.push(
             context,
+
             MaterialPageRoute(builder: (context) => const NoteScreen()),
           );
 
@@ -127,6 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
             await saveNotes();
           }
         },
+
         child: const Icon(Icons.add),
       ),
     );
@@ -134,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class NoteScreen extends StatefulWidget {
-  final String? existingNote;
+  final Note? existingNote;
 
   const NoteScreen({super.key, this.existingNote});
 
@@ -143,18 +184,26 @@ class NoteScreen extends StatefulWidget {
 }
 
 class _NoteScreenState extends State<NoteScreen> {
-  final TextEditingController noteController = TextEditingController();
+  final TextEditingController titleController = TextEditingController();
+
+  final TextEditingController contentController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
 
-    noteController.text = widget.existingNote ?? '';
+    if (widget.existingNote != null) {
+      titleController.text = widget.existingNote!.title;
+
+      contentController.text = widget.existingNote!.content;
+    }
   }
 
   @override
   void dispose() {
-    noteController.dispose();
+    titleController.dispose();
+
+    contentController.dispose();
 
     super.dispose();
   }
@@ -163,12 +212,20 @@ class _NoteScreenState extends State<NoteScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Note'),
+        title: const Text('Note'),
+
         actions: [
           IconButton(
             onPressed: () {
-              Navigator.pop(context, noteController.text);
+              final note = Note(
+                title: titleController.text,
+
+                content: contentController.text,
+              );
+
+              Navigator.pop(context, note);
             },
+
             icon: const Icon(Icons.save),
           ),
         ],
@@ -177,13 +234,37 @@ class _NoteScreenState extends State<NoteScreen> {
       body: Padding(
         padding: const EdgeInsets.all(16),
 
-        child: TextField(
-          controller: noteController,
-          decoration: const InputDecoration(
-            hintText: 'Write your note here...',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 10,
+        child: Column(
+          children: [
+            TextField(
+              controller: titleController,
+
+              decoration: const InputDecoration(
+                hintText: 'Title',
+
+                border: OutlineInputBorder(),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+            Expanded(
+              child: TextField(
+                controller: contentController,
+
+                decoration: const InputDecoration(
+                  hintText: 'Write your note here...',
+
+                  border: OutlineInputBorder(),
+                ),
+
+                maxLines: null,
+
+                expands: true,
+
+                textAlignVertical: TextAlignVertical.top,
+              ),
+            ),
+          ],
         ),
       ),
     );
